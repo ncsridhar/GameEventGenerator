@@ -4,6 +4,13 @@ import java.io.Serializable;
 import java.util.Random;
 import java.util.UUID;
 
+import com.collector.gazelle.dto.AuditInfo;
+import com.collector.gazelle.dto.GzEvent;
+import com.collector.gazelle.dto.RoutingInfo;
+import com.collector.gazelle.kafka.GzQueue;
+import com.collector.gazelle.kafka.GzQueueKafkaImpl;
+import com.google.gson.Gson;
+
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
@@ -125,13 +132,35 @@ public class LoadGenMain {
 
 	public static class Sender extends UntypedActor {
 
+		private GzQueue queue = null;
+		Gson gson = new Gson();
+		
+		@Override
+		public void preStart() {
+			// TODO Auto-generated method stub
+			super.preStart();
+			queue = new GzQueueKafkaImpl();
+		}
 		@Override
 		public void onReceive(Object m) throws Exception {
 			// TODO Auto-generated method stub
 			if (m instanceof SessionMsg){
 				SessionMsg msg = (SessionMsg) m;
-				System.out.println(msg.toString());
+				//System.out.println(msg.toString());
+				queue.put(getGzEvent(msg), false);
 			}
+		}
+		
+		private GzEvent getGzEvent(SessionMsg msg){
+			GzEvent e = new GzEvent();
+			RoutingInfo r = new RoutingInfo("x", "SESSION");
+			AuditInfo a = new AuditInfo("sridhar", 100L);
+			
+			e.setAuditInfo(a);
+			e.setRoutingInfo(r);
+			e.setJsonPayload(gson.toJson(msg));
+			
+			return e;
 		}
 
 	}
@@ -204,7 +233,7 @@ public class LoadGenMain {
 
 	public static void main(String[] args) throws InterruptedException {
 		int noOfSecs = 5;
-		final int perSec = 10;
+		final int perSec = 1000;
 
 		ActorSystem system = ActorSystem.create("LoadGen-Actor-system");
 
